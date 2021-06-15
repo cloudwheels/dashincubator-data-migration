@@ -1,0 +1,21 @@
+{
+  "name": "dashincubator-data-migration",
+  "version": "1.0.0",
+  "description": "Migrate trello data to dashinc app v2",
+  "main": "index.js",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "bcrypt": "^5.0.1",
+    "mongodb": "^3.6.9"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github.com/dashincubator/dashincubator-data-migration"
+  },
+  "author": "github.com/cloudwheels",
+  "license": "MIT"
+}
