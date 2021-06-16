@@ -77,14 +77,14 @@ function validURL(str) {
     return !!pattern.test(str);
 }
 
-function stringToSlug (str) {
+function stringToSlug(str) {
     str = str.replace(/^\s+|\s+$/g, ''); // trim
     str = str.toLowerCase();
-  
+
     // remove accents, swap ñ for n, etc
     var from = "àáäâèéëêìíïîòóöôùúüûñç·/_,:;";
-    var to   = "aaaaeeeeiiiioooouuuunc------";
-    for (var i=0, l=from.length ; i<l ; i++) {
+    var to = "aaaaeeeeiiiioooouuuunc------";
+    for (var i = 0, l = from.length; i < l; i++) {
         str = str.replace(new RegExp(from.charAt(i), 'g'), to.charAt(i));
     }
 
@@ -95,11 +95,11 @@ function stringToSlug (str) {
     return str;
 }
 
-const taskType=(tasklistName)=>{
-    if(tasklistName.toUpperCase()==="SPECIFICATION TASKS") { return "spec" }
-    else if(tasklistName.toUpperCase()==="PRODUCTION TASKS") { return "production" }
-    else if (tasklistName.toUpperCase()==="QA TASKS") { return "qa" }
-    else {throw new Error(`invalid task type ${tasklistName}`) }
+const taskType = (tasklistName) => {
+    if (tasklistName.toUpperCase() === "SPECIFICATION TASKS") { return "spec" }
+    else if (tasklistName.toUpperCase() === "PRODUCTION TASKS") { return "production" }
+    else if (tasklistName.toUpperCase() === "QA TASKS") { return "qa" }
+    else { throw new Error(`invalid task type ${tasklistName}`) }
 }
 
 async function getMembers() {
@@ -425,7 +425,7 @@ async function insertUsers() {
         );
 
         //console.dir(docs_users);
-        
+
         // create a document to be inserted
         //core fields
 
@@ -557,27 +557,98 @@ async function insertBounties() {
 
             //get admins
 
-            /*
-            TODO - Card ADMINS RETRIERVE OBJECTS OR UPDATE LATER
+
+            //TODO - Card ADMINS RETRIERVE OBJECTS OR UPDATE LATER
+            //ALSO ADD TO ADMINS LIST SO THAT isAdmin Property can be added on users
+            //initialise admins as null
+            doc_bounty.primaryAdmin = null;
+            doc_bounty.secondaryAdmin = null;
 
             let cardAdmins = c.members;
             //console.log("cardAdmins", cardAdmins)
+            //console.log(`number of admins is ${cardAdmins.length}`)
             if (cardAdmins.length == 1) {
-                card.adminPrimary = cardAdmins[0].id
-                card.adminSecondary = null;
+                //console.log(`find _id: ${new ObjectID(cardAdmins[0].id)}`)
+                let findPrimary = await users.find({ _id: new ObjectID(cardAdmins[0].id) }).toArray();
+                //console.log(`${findPrimary}`)
+                let foundPrimary = findPrimary[0]
+                doc_bounty.primaryAdmin = foundPrimary // await users.find({ _id: new ObjectID(cardAdmins[0].id) }).toArray()[0];
+                doc_bounty.secondaryAdmin = null;
+                if (cardCustomFields.secondaryAdmin != null) {
+                    processingErrors.push({ error: `number of admins is ${cardAdmins.length} BUT there is a value (${cardCustomFields.secondaryAdmin}) for 2ndary on ${c.name}` })
+                }
             }
             else if (cardAdmins.length == 2) {
                 // TODO: map secondry admin username 
                 // to find primary & secondary
+                if (cardCustomFields.secondaryAdmin != null) {
+                    //console.log(`look for secondary with username ${cardCustomFields.secondaryAdmin}`)
 
-                card.adminPrimary = cardAdmins[0].id
-                card.adminSecondary = null;
+                    //look for the 2ndary admin by name in mongo users
+                    findSecondaryByName = await users.find({ username: cardCustomFields.secondaryAdmin }).toArray();
+
+
+                    if (findSecondaryByName.length == 1) {
+                        //console.log(`found secondary admin`)
+                        let foundSecondaryAdmin = findSecondaryByName[0]
+
+                        let foundSecondaryId = ObjectID(foundSecondaryAdmin._id).toString()
+
+                        //console.log(`they have Id ${foundSecondaryId} - checking in the array of admins from trello`)
+                        //check they are one of the 2 admins 
+
+                        let findInArray = cardAdmins.find((x) => x.id == foundSecondaryId)
+                        //console.dir(findInArray)
+                        if (findInArray.id == foundSecondaryId) {
+                            //console.log(`found them! ${foundSecondaryId} is the secondary admin`)
+                            doc_bounty.secondaryAdmin = foundSecondaryAdmin
+                            //console.log(`the other user should be secondary admin - find index of secondary - primary is the other one`)
+                            let secondaryIndex = cardAdmins.findIndex((x) => x.id == foundSecondaryId);
+                            if (secondaryIndex == 0) {
+                                let findPrimary = await users.find({ _id: new ObjectID(cardAdmins[1].id) }).toArray();
+                                //console.log(`${findPrimary}`)
+                                let foundPrimary = findPrimary[0]
+                                doc_bounty.primaryAdmin = foundPrimary //await users.find({ _id: new ObjectID(cardAdmins[1].id) }).toArray()[0]
+                            }
+                            else {
+                                let findPrimary = await users.find({ _id: new ObjectID(cardAdmins[0].id) }).toArray();
+                                //console.log(`${findPrimary}`)
+                                let foundPrimary = findPrimary[0]
+                                doc_bounty.primaryAdmin = foundPrimary //await users.find({ _id: new ObjectID(cardAdmins[0].id) }).toArray()[0]
+                            }
+                        }
+                        else {
+                            processingErrors.push({ error: `number of admins is ${cardAdmins.length}. ${cardCustomFields.secondaryAdmin} (${foundSecondaryId}) is listed as secondary admin but is NOT an admin on the card  for ${c.name}` })
+
+                        }
+
+                    }
+                    else {
+                        processingErrors.push({ error: `number of admins is ${cardAdmins.length} but looking for user ${cardCustomFields.secondaryAdmin} in mongodb returned ${findSecondaryByName} for ${c.name}` })
+                    }
+                }
+                else {
+                    processingErrors.push({ error: `number of admins is ${cardAdmins.length} but no 2ndary is given for ${c.name}` })
+                }
+                
+                let findPrimary = await users.find({ _id: new ObjectID(cardAdmins[0].id) }).toArray();
+                let foundPrimary = findPrimary[0]
+                doc_bounty.primaryAdmin = foundPrimary //cardAdmins[0].id
+                doc_bounty.secondaryAdmin = null;
+                
             }
             else {
-                card.adminPrimary = null;
-                card.adminSecondary = null;
+                doc_bounty.primaryAdmin = null;
+                doc_bounty.secondaryAdmin = null;
+                processingErrors.push({ error: `number of admins is ${cardAdmins.length} for ${c.name}` })
             }
 
+            /*
+            console.log(`So - admins for ${c.name} are (should be ${cardAdmins.length}):`)
+            console.log(`primary:`)
+            console.dir(doc_bounty.primaryAdmin)
+            console.log(`secondary:`)
+            console.dir(doc_bounty.secondaryAdmin)
             */
 
             docs_bounties.push(doc_bounty)
@@ -598,7 +669,7 @@ async function insertBounties() {
                 await Promise.all(checklist.checkItems.map(async checklistItem => {
 
                     //ignore concept tasks
-                    if(ignoreBadTaskListName) return;
+                    if (ignoreBadTaskListName) return;
 
                     let doc_task = {};
 
@@ -622,7 +693,7 @@ async function insertBounties() {
                     doc_task.dateCreated = Date.now()
 
                     doc_task.bountyTitle = c.name
-                    
+
 
                     //TODO - fix add program type
                     //doc_task.bountyType = 
@@ -658,7 +729,7 @@ async function insertBounties() {
                     //assigned member - LOOKUP....
                     if (checklistItem.idMember != null) {
                         //console.log(`finding user matching id ${checklistItem.idMember}`)
-                        let assignee = await users.find({_id: new ObjectID(checklistItem.idMember)}).toArray();
+                        let assignee = await users.find({ _id: new ObjectID(checklistItem.idMember) }).toArray();
                         //console.log("found user")
                         //console.dir(assignee[0])
                         doc_task.assignee = assignee[0];
@@ -674,7 +745,18 @@ async function insertBounties() {
                     }
 
                     //doc_task.createdBy can't be empty or breaks client code
-                    //doc_task.createdBy
+
+                    if (doc_bounty.primaryAdmin != null) {
+                        doc_task.createdBy = doc_bounty.primaryAdmin
+
+                    }
+                    else {
+                        taskWarnings.push({ warnLevel: 1, warningText: `There is no admin for the card, SETTING task.createdBy TO ANDYFREER BY DEFAULT (${checklistName}) `, cardName: c.name, cardUrl: c.shortUrl, taskDesc: checklistItem.name });
+                        //get andyfreer as default
+                        let getAndy = await users.find({ username: 'andyfreer' }).toArray();
+                        doc_task.createdBy = getAndy[0]
+                    }
+
 
 
 
@@ -696,7 +778,10 @@ async function insertBounties() {
             `${docs_bounties.length} bounty documents ready to insert`,
         );
 
+        //console.dir(processingErrors)
         //console.dir(docs_bounties);
+
+        
 
         console.log(
             `${docs_tasks.length} task documents ready to insert`,
@@ -709,13 +794,13 @@ async function insertBounties() {
 
         //return
 
-       
+
         const resultBounties = await bounties.insertMany(docs_bounties);
 
         console.log(
             `${resultBounties.insertedCount} bounty documents were inserted`,
         );
-        
+
         const resultTasks = await tasks.insertMany(docs_tasks);
 
         console.log(
@@ -724,13 +809,14 @@ async function insertBounties() {
 
 
         console.dir(processingErrors)
+        console.dir(taskWarnings);
 
         return resultBounties
     }
 
     catch (e) {
         console.error(e)
-        processingErrors.push(e)
+        //processingErrors.push(e)
     }
 
 }
@@ -741,19 +827,39 @@ async function insertBounties() {
 async function run() {
     try {
         await client.connect();
-        database = client.db("dashincubator");
+        database = client.db("dashincubator-import");
         //activity history
-        activities = database.collection("activity");
-        bounties = database.collection("bounties");
         users = database.collection("users")
+        bounties = database.collection("bounties");        
         tasks = database.collection("tasks");
+        activities = database.collection("activity");
 
-        /*
+        let deleteDocs
+        
+
+        console.log("deleting all tasks...")
+        deleteDocs = await tasks.deleteMany();
+        console.log("...done")
+
+        console.log("deleting all bounties...")
+        deleteDocs = await bounties.deleteMany();
+        console.log("...done")
+
+        console.log("deleting all activities...")
+        deleteDocs = await activities.deleteMany();
+        console.log("...done")
+
+        console.log("deleting all users...")
+        deleteDocs = await users.deleteMany();
+        console.log("...done")
+
+
+        
         resultUser = await insertUsers()
         let insertedIds = Object.entries(resultUser.insertedIds).map((i) => { return ObjectID(i[1].id).toString() })
 
         resultPasswords = await insertPasswords(insertedIds)
-        */
+        
         resultBounties = await insertBounties();
 
 
