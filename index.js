@@ -1,5 +1,6 @@
 const { MongoClient } = require("mongodb");
 const ObjectID = require("mongodb").ObjectID;
+
 const bcrypt = require("bcrypt");
 const axios = require("axios");
 
@@ -40,7 +41,8 @@ const bcryptSaltRounds = 10
 // Replace the uri string with your MongoDB deployment's connection string.
 const uri =
     //"mongodb+srv://<user>:<password>@<cluster-url>?writeConcern=majority";
-    "mongodb://localhost:27017/?retryWrites=true&w=majority"
+    //"mongodb://localhost:27017/?retryWrites=true&w=majority"
+    "mongodb+srv://cloudwheels:cloudwheels@cluster0.mdye1.mongodb.net/?retryWrites=true&w=majority"
 const client = new MongoClient(uri);
 let database, activities, bounties, tasks, users;
 
@@ -630,12 +632,12 @@ async function insertBounties() {
                 else {
                     processingErrors.push({ error: `number of admins is ${cardAdmins.length} but no 2ndary is given for ${c.name}` })
                 }
-                
+
                 let findPrimary = await users.find({ _id: new ObjectID(cardAdmins[0].id) }).toArray();
                 let foundPrimary = findPrimary[0]
                 doc_bounty.primaryAdmin = foundPrimary //cardAdmins[0].id
                 doc_bounty.secondaryAdmin = null;
-                
+
             }
             else {
                 doc_bounty.primaryAdmin = null;
@@ -781,7 +783,7 @@ async function insertBounties() {
         //console.dir(processingErrors)
         //console.dir(docs_bounties);
 
-        
+
 
         console.log(
             `${docs_tasks.length} task documents ready to insert`,
@@ -827,39 +829,43 @@ async function insertBounties() {
 async function run() {
     try {
         await client.connect();
-        database = client.db("dashincubator-import");
+        //database = client.db("dashincubator-import");
+        // Use the admin database for the operation
+        const adminDb = client.db().admin();
+
+        // List all the available databases
+
+        let dbs = await adminDb.listDatabases({nameOnly:true})
+        const dbName = "dashincubator-import"     
+        const dbExists = dbs.databases.findIndex((i)=>i.name==dbName) >-1 ?true:false
+        console.dir(`DB ${dbName} Exists?: ${dbExists}`)
+        database = client.db(dbName)
+        if(dbExists){
+            //drop if it does
+            await database.dropDatabase()
+
+        }
+        //create collections
+        database.createCollection("activity")
+        database.createCollection("users")
+        database.createCollection("passwords")
+        database.createCollection("bounties")
+        database.createCollection("tasks")
+        database.createCollection("notifications")
+        
+
         //activity history
         users = database.collection("users")
-        bounties = database.collection("bounties");        
+        bounties = database.collection("bounties");
         tasks = database.collection("tasks");
         activities = database.collection("activity");
 
-        let deleteDocs
-        
 
-        console.log("deleting all tasks...")
-        deleteDocs = await tasks.deleteMany();
-        console.log("...done")
-
-        console.log("deleting all bounties...")
-        deleteDocs = await bounties.deleteMany();
-        console.log("...done")
-
-        console.log("deleting all activities...")
-        deleteDocs = await activities.deleteMany();
-        console.log("...done")
-
-        console.log("deleting all users...")
-        deleteDocs = await users.deleteMany();
-        console.log("...done")
-
-
-        
         resultUser = await insertUsers()
         let insertedIds = Object.entries(resultUser.insertedIds).map((i) => { return ObjectID(i[1].id).toString() })
 
         resultPasswords = await insertPasswords(insertedIds)
-        
+
         resultBounties = await insertBounties();
 
 
