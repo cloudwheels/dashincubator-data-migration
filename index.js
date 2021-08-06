@@ -40,9 +40,8 @@ const bcryptSaltRounds = 10
 
 // Replace the uri string with your MongoDB deployment's connection string.
 const uri =
-    //"mongodb+srv://<user>:<password>@<cluster-url>?writeConcern=majority";
-    //"mongodb://localhost:27017/?retryWrites=true&w=majority"
-    "mongodb+srv://cloudwheels:cloudwheels@cluster0.mdye1.mongodb.net/?retryWrites=true&w=majority"
+    "mongodb+srv://<user>:<password>@<cluster-url>?writeConcern=majority";
+    // "mongodb://localhost:27017/?retryWrites=true&w=majority"
 const client = new MongoClient(uri);
 let database, activities, bounties, tasks, users;
 
@@ -166,7 +165,7 @@ async function processCustomFields(arrCustomFields) {
 
     /*
           DEPRECATED CUSTOM FIELDS:
-  
+
               //get Skills
               filterSkills = arrCustomFields.filter(field => field.idCustomField == TRELLO_CUSTOM_ID_SKILLS)
               if (filterSkills.length > 0) {
@@ -177,7 +176,7 @@ async function processCustomFields(arrCustomFields) {
               else {
                   customFields.skills = null;
               }
-  
+
               //get Phase
               filterPhase = arrCustomFields.filter(field => field.idCustomField == TRELLO_CUSTOM_ID_PHASE)
               if (filterPhase.length > 0) {
@@ -188,7 +187,7 @@ async function processCustomFields(arrCustomFields) {
               else {
                   customFields.phase = null;
               }
-  
+
               //get Last Phase
               filterLastPhase = arrCustomFields.filter(field => field.idCustomField == TRELLO_CUSTOM_ID_LAST_PHASE)
               if (filterLastPhase.length > 0) {
@@ -308,7 +307,7 @@ async function splitTaskDescription(strTaskDescription) {
         const taskDesc = strTaskDescription.substr(firstRBracket + 1, lastLBracket - firstRBracket - 1).trim();
 
         /*
-    
+
                     //replace md links with html <a> link
                     let elements = taskDesc.match(/\[.*?\)/g);
                     if (elements != null && elements.length > 0) {
@@ -318,7 +317,7 @@ async function splitTaskDescription(strTaskDescription) {
                             taskDesc = taskDesc.replace(el, '<a href="' + url + '" target="_blank">' + txt + '</a>')
                         }
                     }
-    
+
                     */
 
         const lastBracketContent = strTaskDescription.substr(lastLBracket + 1, lastRBracket - lastLBracket - 1).trim().toUpperCase();
@@ -404,7 +403,7 @@ async function insertUsers() {
             if (m.bio.length) {
                 doc_user.bio = m.bio
             }
-            //set admins/contributors later 
+            //set admins/contributors later
 
             //doc_user1.isAdmin = true
             //doc_user1.isSuperUser = true
@@ -548,7 +547,7 @@ async function insertBounties() {
                 doc_bounty.status = "active"
             }
 
-            //empty array reqd or -> error in client (bounty view code) 
+            //empty array reqd or -> error in client (bounty view code)
             doc_bounty.links = []
 
             //card.paused = cardCustomFields.paused;
@@ -581,7 +580,7 @@ async function insertBounties() {
                 }
             }
             else if (cardAdmins.length == 2) {
-                // TODO: map secondry admin username 
+                // TODO: map secondry admin username
                 // to find primary & secondary
                 if (cardCustomFields.secondaryAdmin != null) {
                     //console.log(`look for secondary with username ${cardCustomFields.secondaryAdmin}`)
@@ -597,7 +596,7 @@ async function insertBounties() {
                         let foundSecondaryId = ObjectID(foundSecondaryAdmin._id).toString()
 
                         //console.log(`they have Id ${foundSecondaryId} - checking in the array of admins from trello`)
-                        //check they are one of the 2 admins 
+                        //check they are one of the 2 admins
 
                         let findInArray = cardAdmins.find((x) => x.id == foundSecondaryId)
                         //console.dir(findInArray)
@@ -698,7 +697,7 @@ async function insertBounties() {
 
 
                     //TODO - fix add program type
-                    //doc_task.bountyType = 
+                    //doc_task.bountyType =
 
                     doc_task.bountyDisplayURL = stringToSlug(c.name)
 
@@ -836,7 +835,7 @@ async function run() {
         // List all the available databases
 
         let dbs = await adminDb.listDatabases({nameOnly:true})
-        const dbName = "dashincubator-import"     
+        const dbName = "dashincubator-import"
         const dbExists = dbs.databases.findIndex((i)=>i.name==dbName) >-1 ?true:false
         console.dir(`DB ${dbName} Exists?: ${dbExists}`)
         database = client.db(dbName)
@@ -852,7 +851,7 @@ async function run() {
         database.createCollection("bounties")
         database.createCollection("tasks")
         database.createCollection("notifications")
-        
+
 
         //activity history
         users = database.collection("users")
